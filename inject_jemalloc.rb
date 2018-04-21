@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 path = File.expand_path(File.dirname(__FILE__))
 dockerfiles = Dir.glob("#{path}/**/Dockerfile")
 
