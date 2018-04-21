@@ -1,4 +1,4 @@
-FROM debian:jessie
+FROM debian:stretch
 
 RUN apt-get update \
 	&& apt-get install -y --no-install-recommends \
@@ -6,7 +6,7 @@ RUN apt-get update \
 		ca-certificates \
 		libffi-dev \
 		libgdbm3 \
-		libssl-dev \
+		libssl1.0-dev \
 		libyaml-dev \
 		procps \
 		zlib1g-dev \
@@ -19,9 +19,9 @@ RUN mkdir -p /usr/local/etc \
 		echo 'update: --no-document'; \
 	} >> /usr/local/etc/gemrc
 
-ENV RUBY_MAJOR 2.4
-ENV RUBY_VERSION 2.4.4
-ENV RUBY_DOWNLOAD_SHA256 1d0034071d675193ca769f64c91827e5f54cb3a7962316a41d5217c7bc6949f0
+ENV RUBY_MAJOR 2.3
+ENV RUBY_VERSION 2.3.7
+ENV RUBY_DOWNLOAD_SHA256 c61f8f2b9d3ffff5567e186421fa191f0d5e7c2b189b426bb84498825d548edb
 ENV RUBYGEMS_VERSION 2.7.6
 ENV BUNDLER_VERSION 1.16.1
 

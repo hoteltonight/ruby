@@ -7,11 +7,11 @@ RUN mkdir -p /usr/local/etc \
 		echo 'update: --no-document'; \
 	} >> /usr/local/etc/gemrc
 
-ENV RUBY_MAJOR 2.5-rc
-ENV RUBY_VERSION 2.5.0-rc1
-ENV RUBY_DOWNLOAD_SHA256 a479a1bce69b2cf656821f10104dcb8b426922b56d3d6cbdf48318842fae752c
-ENV RUBYGEMS_VERSION 2.7.3
-ENV BUNDLER_VERSION 1.16.0
+ENV RUBY_MAJOR 2.5
+ENV RUBY_VERSION 2.5.1
+ENV RUBY_DOWNLOAD_SHA256 886ac5eed41e3b5fc699be837b0087a6a5a3d10f464087560d2d21b3e71b754d
+ENV RUBYGEMS_VERSION 2.7.6
+ENV BUNDLER_VERSION 1.16.1
 
 # some of ruby's build scripts are written in ruby
 #   we purge system ruby later to make sure our final image uses what we just built
@@ -59,7 +59,8 @@ RUN set -ex \
 	&& rm -r /usr/src/ruby \
 	\
 	&& gem update --system "$RUBYGEMS_VERSION" \
-	&& gem install bundler --version "$BUNDLER_VERSION" --force
+	&& gem install bundler --version "$BUNDLER_VERSION" --force \
+	&& rm -r /root/.gem/
 
 # install things globally, for great justice
 # and don't create ".bundle" in all our apps

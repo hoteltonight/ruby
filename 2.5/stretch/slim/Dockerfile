@@ -1,4 +1,4 @@
-FROM debian:jessie
+FROM debian:stretch
 
 RUN apt-get update \
 	&& apt-get install -y --no-install-recommends \
@@ -19,9 +19,9 @@ RUN mkdir -p /usr/local/etc \
 		echo 'update: --no-document'; \
 	} >> /usr/local/etc/gemrc
 
-ENV RUBY_MAJOR 2.4
-ENV RUBY_VERSION 2.4.4
-ENV RUBY_DOWNLOAD_SHA256 1d0034071d675193ca769f64c91827e5f54cb3a7962316a41d5217c7bc6949f0
+ENV RUBY_MAJOR 2.5
+ENV RUBY_VERSION 2.5.1
+ENV RUBY_DOWNLOAD_SHA256 886ac5eed41e3b5fc699be837b0087a6a5a3d10f464087560d2d21b3e71b754d
 ENV RUBYGEMS_VERSION 2.7.6
 ENV BUNDLER_VERSION 1.16.1
 

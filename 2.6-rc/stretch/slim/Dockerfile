@@ -1,4 +1,16 @@
-FROM alpine:3.7
+FROM debian:stretch
+
+RUN apt-get update \
+	&& apt-get install -y --no-install-recommends \
+		bzip2 \
+		ca-certificates \
+		libffi-dev \
+		libgdbm3 \
+		libssl-dev \
+		libyaml-dev \
+		procps \
+		zlib1g-dev \
+	&& rm -rf /var/lib/apt/lists/*
 
 # skip installing gem documentation
 RUN mkdir -p /usr/local/etc \
@@ -7,44 +19,36 @@ RUN mkdir -p /usr/local/etc \
 		echo 'update: --no-document'; \
 	} >> /usr/local/etc/gemrc
 
-ENV RUBY_MAJOR 2.5-rc
-ENV RUBY_VERSION 2.5.0-rc1
-ENV RUBY_DOWNLOAD_SHA256 a479a1bce69b2cf656821f10104dcb8b426922b56d3d6cbdf48318842fae752c
-ENV RUBYGEMS_VERSION 2.7.3
-ENV BUNDLER_VERSION 1.16.0
+ENV RUBY_MAJOR 2.6-rc
+ENV RUBY_VERSION 2.6.0-preview1
+ENV RUBY_DOWNLOAD_SHA256 1d99139116e4e245ce543edb137b2a8873c26e9f0bde88d8cee6789617cc8d0e
+ENV RUBYGEMS_VERSION 2.7.6
+ENV BUNDLER_VERSION 1.16.1
 
 # some of ruby's build scripts are written in ruby
 #   we purge system ruby later to make sure our final image uses what we just built
-# readline-dev vs libedit-dev: https://bugs.ruby-lang.org/issues/11869 and https://github.com/docker-library/ruby/issues/75
 RUN set -ex \
 	\
-	&& apk add --no-cache --virtual .ruby-builddeps \
+	&& buildDeps=' \
 		autoconf \
 		bison \
-		bzip2 \
-		bzip2-dev \
-		ca-certificates \
-		coreutils \
-		dpkg-dev dpkg \
+		dpkg-dev \
 		gcc \
-		gdbm-dev \
-		glib-dev \
-		libc-dev \
-		libffi-dev \
-		libressl \
-		libressl-dev \
+		libbz2-dev \
+		libgdbm-dev \
+		libglib2.0-dev \
+		libncurses-dev \
+		libreadline-dev \
 		libxml2-dev \
 		libxslt-dev \
-		linux-headers \
 		make \
-		ncurses-dev \
-		procps \
-		readline-dev \
 		ruby \
-		tar \
-		xz \
-		yaml-dev \
-		zlib-dev \
+		wget \
+		xz-utils \
+	' \
+	&& apt-get update \
+	&& apt-get install -y --no-install-recommends $buildDeps \
+	&& rm -rf /var/lib/apt/lists/* \
 	\
 	&& wget -O ruby.tar.xz "https://cache.ruby-lang.org/pub/ruby/${RUBY_MAJOR%-rc}/ruby-$RUBY_VERSION.tar.xz" \
 	&& echo "$RUBY_DOWNLOAD_SHA256 *ruby.tar.xz" | sha256sum -c - \
@@ -66,8 +70,6 @@ RUN set -ex \
 	\
 	&& autoconf \
 	&& gnuArch="$(dpkg-architecture --query DEB_BUILD_GNU_TYPE)" \
-# the configure script does not detect isnan/isinf as macros
-	&& export ac_cv_func_isnan=yes ac_cv_func_isinf=yes \
 	&& ./configure \
 		--build="$gnuArch" \
 		--disable-install-doc \
@@ -75,26 +77,16 @@ RUN set -ex \
 	&& make -j "$(nproc)" \
 	&& make install \
 	\
-	&& runDeps="$( \
-		scanelf --needed --nobanner --format '%n#p' --recursive /usr/local \
-			| tr ',' '\n' \
-			| sort -u \
-			| awk 'system("[ -e /usr/local/lib/" $1 " ]") == 0 { next } { print "so:" $1 }' \
-	)" \
-	&& apk add --virtual .ruby-rundeps $runDeps \
-		bzip2 \
-		ca-certificates \
-		libffi-dev \
-		libressl-dev \
-		procps \
-		yaml-dev \
-		zlib-dev \
-	&& apk del .ruby-builddeps \
+	&& dpkg-query --show --showformat '${package}\n' \
+		| grep -P '^libreadline\d+$' \
+		| xargs apt-mark manual \
+	&& apt-get purge -y --auto-remove $buildDeps \
 	&& cd / \
 	&& rm -r /usr/src/ruby \
 	\
 	&& gem update --system "$RUBYGEMS_VERSION" \
-	&& gem install bundler --version "$BUNDLER_VERSION" --force
+	&& gem install bundler --version "$BUNDLER_VERSION" --force \
+	&& rm -r /root/.gem/
 
 # install things globally, for great justice
 # and don't create ".bundle" in all our apps
