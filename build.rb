@@ -2,7 +2,7 @@
 
 VERSIONS_TO_BUILD = %w[2.3 2.4]
 TAG_TO_FIND = /ENV\s+RUBY_VERSION\s+(.+)/
-NAME = "callumj/ruby-jemalloc"
+NAME = "hoteltonight/ruby-jemalloc"
 
 require 'open3'
 
