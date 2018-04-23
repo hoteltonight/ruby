@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-VERSIONS_TO_BUILD = %w[2.3 2.4]
+VERSIONS_TO_BUILD = %w[2.3 2.4 2.5 2.6]
 TAG_TO_FIND = /ENV\s+RUBY_VERSION\s+(.+)/
 NAME = "hoteltonight/ruby-jemalloc"
 
