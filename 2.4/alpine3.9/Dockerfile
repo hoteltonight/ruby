@@ -1,4 +1,4 @@
-FROM alpine:3.7
+FROM alpine:3.9
 
 # skip installing gem documentation
 RUN mkdir -p /usr/local/etc \
@@ -7,11 +7,10 @@ RUN mkdir -p /usr/local/etc \
 		echo 'update: --no-document'; \
 	} >> /usr/local/etc/gemrc
 
-ENV RUBY_MAJOR 2.5
-ENV RUBY_VERSION 2.5.1
-ENV RUBY_DOWNLOAD_SHA256 886ac5eed41e3b5fc699be837b0087a6a5a3d10f464087560d2d21b3e71b754d
-ENV RUBYGEMS_VERSION 2.7.7
-ENV BUNDLER_VERSION 1.16.2
+ENV RUBY_MAJOR 2.4
+ENV RUBY_VERSION 2.4.5
+ENV RUBY_DOWNLOAD_SHA256 2f0cdcce9989f63ef7c2939bdb17b1ef244c4f384d85b8531d60e73d8cc31eeb
+ENV RUBYGEMS_VERSION 3.0.1
 
 # some of ruby's build scripts are written in ruby
 #   we purge system ruby later to make sure our final image uses what we just built
@@ -31,13 +30,13 @@ RUN set -ex \
 		glib-dev \
 		libc-dev \
 		libffi-dev \
-		libressl \
-		libressl-dev \
 		libxml2-dev \
 		libxslt-dev \
 		linux-headers \
 		make \
 		ncurses-dev \
+		openssl \
+		openssl-dev \
 		procps \
 		readline-dev \
 		ruby \
@@ -54,6 +53,14 @@ RUN set -ex \
 	&& rm ruby.tar.xz \
 	\
 	&& cd /usr/src/ruby \
+	\
+# https://github.com/docker-library/ruby/issues/196
+# https://bugs.ruby-lang.org/issues/14387#note-13 (patch source)
+# https://bugs.ruby-lang.org/issues/14387#note-16 ("Therefore ncopa's patch looks good for me in general." -- only breaks glibc which doesn't matter here)
+	&& wget -O 'thread-stack-fix.patch' 'https://bugs.ruby-lang.org/attachments/download/7081/0001-thread_pthread.c-make-get_main_stack-portable-on-lin.patch' \
+	&& echo '3ab628a51d92fdf0d2b5835e93564857aea73e0c1de00313864a94a6255cb645 *thread-stack-fix.patch' | sha256sum -c - \
+	&& patch -p1 -i thread-stack-fix.patch \
+	&& rm thread-stack-fix.patch \
 	\
 # hack in "ENABLE_PATH_CHECK" disabling to suppress:
 #   warning: Insecure world writable dir
@@ -81,32 +88,32 @@ RUN set -ex \
 			| sort -u \
 			| awk 'system("[ -e /usr/local/lib/" $1 " ]") == 0 { next } { print "so:" $1 }' \
 	)" \
-	&& apk add --virtual .ruby-rundeps $runDeps \
+	&& apk add --no-network --virtual .ruby-rundeps $runDeps \
 		bzip2 \
 		ca-certificates \
 		libffi-dev \
-		libressl-dev \
 		procps \
 		yaml-dev \
 		zlib-dev \
-	&& apk del .ruby-builddeps \
+	&& apk del --no-network .ruby-builddeps \
 	&& cd / \
 	&& rm -r /usr/src/ruby \
-	\
-	&& gem update --system "$RUBYGEMS_VERSION" \
-	&& gem install bundler --version "$BUNDLER_VERSION" --force \
-	&& rm -r /root/.gem/
+# make sure bundled "rubygems" is older than RUBYGEMS_VERSION (https://github.com/docker-library/ruby/issues/246)
+	&& ruby -e 'exit(Gem::Version.create(ENV["RUBYGEMS_VERSION"]) > Gem::Version.create(Gem::VERSION))' \
+	&& gem update --system "$RUBYGEMS_VERSION" && rm -r /root/.gem/ \
+# rough smoke test
+	&& ruby --version && gem --version && bundle --version
 
 # install things globally, for great justice
 # and don't create ".bundle" in all our apps
 ENV GEM_HOME /usr/local/bundle
 ENV BUNDLE_PATH="$GEM_HOME" \
-	BUNDLE_BIN="$GEM_HOME/bin" \
 	BUNDLE_SILENCE_ROOT_WARNING=1 \
 	BUNDLE_APP_CONFIG="$GEM_HOME"
 # path recommendation: https://github.com/bundler/bundler/pull/6469#issuecomment-383235438
-ENV PATH $BUNDLE_PATH/gems/bin:$PATH
-RUN mkdir -p "$GEM_HOME" "$BUNDLE_BIN" \
-	&& chmod 777 "$GEM_HOME" "$BUNDLE_BIN"
+ENV PATH $GEM_HOME/bin:$BUNDLE_PATH/gems/bin:$PATH
+# adjust permissions of a few directories for running "gem install" as an arbitrary user
+RUN mkdir -p "$GEM_HOME" && chmod 777 "$GEM_HOME"
+# (BUNDLE_PATH = GEM_HOME, no need to mkdir/chown both)
 
 CMD [ "irb" ]

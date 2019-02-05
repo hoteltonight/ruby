@@ -17,8 +17,12 @@ latest_gem_version() {
 	curl -fsSL "https://rubygems.org/api/v1/gems/$1.json" | sed -r 's/^.*"version":"([^"]+)".*$/\1/'
 }
 
-rubygems="$(latest_gem_version rubygems-update)"
-bundler="$(latest_gem_version bundler)"
+# https://github.com/docker-library/ruby/issues/246
+rubygems='3.0.1'
+declare -A newEnoughRubygems=(
+	[2.6]=1 # 3.0.1+
+)
+# TODO once all versions are in this family of "new enough", remove RUBYGEMS_VERSION code entirely
 
 travisEnv=
 for version in "${versions[@]}"; do
@@ -28,13 +32,13 @@ for version in "${versions[@]}"; do
 		rcGrepV=
 	fi
 
-	IFS=$'\n'; allVersions=(
-		$(curl -fsSL --compressed "https://cache.ruby-lang.org/pub/ruby/$rcVersion/" \
-			| grep -E '<a href="ruby-'"$rcVersion"'.[^"]+\.tar\.xz' \
+	IFS=$'\n'; allVersions=( $(
+		curl -fsSL --compressed "https://cache.ruby-lang.org/pub/ruby/$rcVersion/" \
+			| grep -oE '["/]ruby-'"$rcVersion"'.[^"]+\.tar\.xz' \
+			| sed -r 's!^["/]ruby-([^"]+)[.]tar[.]xz!\1!' \
 			| grep $rcGrepV -E 'preview|rc' \
-			| sed -r 's!.*<a href="ruby-([^"]+)\.tar\.xz.*!\1!' \
-			| sort -rV)
-	); unset IFS
+			| sort -ruV
+	) ); unset IFS
 
 	fullVersion=
 	shaVal=
@@ -63,11 +67,11 @@ for version in "${versions[@]}"; do
 		continue
 	fi
 
-	echo "$version: $fullVersion; rubygems $rubygems, bundler $bundler; $shaVal"
+	echo "$version: $fullVersion; $shaVal"
 
 	for v in \
-		alpine{3.4,3.6,3.7} \
-		{jessie,stretch}{/slim,/onbuild,} \
+		alpine{3.7,3.8,3.9} \
+		{jessie,stretch}{/slim,} \
 	; do
 		dir="$version/$v"
 		variant="$(basename "$v")"
@@ -75,18 +79,21 @@ for version in "${versions[@]}"; do
 		[ -d "$dir" ] || continue
 
 		case "$variant" in
-			slim|onbuild|windowsservercore) template="$variant"; tag="$(basename "$(dirname "$dir")")" ;;
+			slim|windowsservercore) template="$variant"; tag="$(basename "$(dirname "$dir")")" ;;
 			alpine*) template='alpine'; tag="${variant#alpine}" ;;
 			*) template='debian'; tag="$variant" ;;
 		esac
 		template="Dockerfile-${template}.template"
+
+		if [ "$variant" = 'slim' ]; then
+			tag+='-slim'
+		fi
 
 		sed -r \
 			-e 's!%%VERSION%%!'"$version"'!g' \
 			-e 's!%%FULL_VERSION%%!'"$fullVersion"'!g' \
 			-e 's!%%SHA256%%!'"$shaVal"'!g' \
 			-e 's!%%RUBYGEMS%%!'"$rubygems"'!g' \
-			-e 's!%%BUNDLER%%!'"$bundler"'!g' \
 			-e "$(
 				if [ "$version" = 2.3 ] && [[ "$v" = stretch* ]]; then
 					echo 's/libssl-dev/libssl1.0-dev/g'
@@ -97,16 +104,18 @@ for version in "${versions[@]}"; do
 			-e 's/^(FROM (debian|buildpack-deps|alpine)):.*/\1:'"$tag"'/' \
 			"$template" > "$dir/Dockerfile"
 
-		if [ "$variant" = 'alpine3.4' ]; then
-			sed -ri -e 's/libressl/openssl/g' "$dir/Dockerfile"
-		fi
-
-		case "$v" in
-			*/onbuild) ;;
-			*)
-				travisEnv='\n  - VERSION='"$version VARIANT=$v$travisEnv"
+		case "$variant" in
+			alpine3.8 | alpine3.7)
+				# Alpine 3.9+ uses OpenSSL, but 3.8/3.7 still uses LibreSSL
+				sed -ri -e 's/openssl/libressl/g' "$dir/Dockerfile"
 				;;
 		esac
+
+		if [ -n "${newEnoughRubygems[$version]:-}" ]; then
+			sed -ri -e '/RUBYGEMS_VERSION/d' "$dir/Dockerfile"
+		fi
+
+		travisEnv='\n  - VERSION='"$version VARIANT=$v$travisEnv"
 	done
 done
 

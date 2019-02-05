@@ -1,4 +1,4 @@
-FROM debian:stretch
+FROM debian:stretch-slim
 
 RUN apt-get update \
 	&& apt-get install -y --no-install-recommends \
@@ -19,11 +19,9 @@ RUN mkdir -p /usr/local/etc \
 		echo 'update: --no-document'; \
 	} >> /usr/local/etc/gemrc
 
-ENV RUBY_MAJOR 2.6-rc
-ENV RUBY_VERSION 2.6.0-preview1
-ENV RUBY_DOWNLOAD_SHA256 1d99139116e4e245ce543edb137b2a8873c26e9f0bde88d8cee6789617cc8d0e
-ENV RUBYGEMS_VERSION 2.7.7
-ENV BUNDLER_VERSION 1.16.2
+ENV RUBY_MAJOR 2.6
+ENV RUBY_VERSION 2.6.1
+ENV RUBY_DOWNLOAD_SHA256 47b629808e9fd44ce1f760cdf3ed14875fc9b19d4f334e82e2cf25cb2898f2f2
 
 # some of ruby's build scripts are written in ruby
 #   we purge system ruby later to make sure our final image uses what we just built
@@ -83,21 +81,19 @@ RUN set -ex \
 	&& apt-get purge -y --auto-remove $buildDeps \
 	&& cd / \
 	&& rm -r /usr/src/ruby \
-	\
-	&& gem update --system "$RUBYGEMS_VERSION" \
-	&& gem install bundler --version "$BUNDLER_VERSION" --force \
-	&& rm -r /root/.gem/
+# rough smoke test
+	&& ruby --version && gem --version && bundle --version
 
 # install things globally, for great justice
 # and don't create ".bundle" in all our apps
 ENV GEM_HOME /usr/local/bundle
 ENV BUNDLE_PATH="$GEM_HOME" \
-	BUNDLE_BIN="$GEM_HOME/bin" \
 	BUNDLE_SILENCE_ROOT_WARNING=1 \
 	BUNDLE_APP_CONFIG="$GEM_HOME"
 # path recommendation: https://github.com/bundler/bundler/pull/6469#issuecomment-383235438
-ENV PATH $BUNDLE_PATH/gems/bin:$PATH
-RUN mkdir -p "$GEM_HOME" "$BUNDLE_BIN" \
-	&& chmod 777 "$GEM_HOME" "$BUNDLE_BIN"
+ENV PATH $GEM_HOME/bin:$BUNDLE_PATH/gems/bin:$PATH
+# adjust permissions of a few directories for running "gem install" as an arbitrary user
+RUN mkdir -p "$GEM_HOME" && chmod 777 "$GEM_HOME"
+# (BUNDLE_PATH = GEM_HOME, no need to mkdir/chown both)
 
 CMD [ "irb" ]
