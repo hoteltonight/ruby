@@ -1,7 +1,7 @@
 FROM debian:stretch-slim
 
 RUN apt-get update \
-	&& apt-get install -y --no-install-recommends \
+	&& apt-get install -y --no-install-recommends libjemalloc-dev \
 		bzip2 \
 		ca-certificates \
 		libffi-dev \
@@ -30,7 +30,7 @@ ENV RUBYGEMS_VERSION 3.0.3
 RUN set -ex \
 	\
 	&& savedAptMark="$(apt-mark showmanual)" \
-	&& apt-get update && apt-get install -y --no-install-recommends \
+	&& apt-get update && apt-get install -y --no-install-recommends libjemalloc-dev \
 		autoconf \
 		bison \
 		dpkg-dev \
@@ -68,7 +68,7 @@ RUN set -ex \
 	\
 	&& autoconf \
 	&& gnuArch="$(dpkg-architecture --query DEB_BUILD_GNU_TYPE)" \
-	&& ./configure \
+	&& ./configure --with-jemalloc \
 		--build="$gnuArch" \
 		--disable-install-doc \
 		--enable-shared \

@@ -1,7 +1,7 @@
 FROM debian:stretch-slim
 
 RUN apt-get update \
-	&& apt-get install -y --no-install-recommends \
+	&& apt-get install -y --no-install-recommends libjemalloc-dev \
 		bzip2 \
 		ca-certificates \
 		libffi-dev \
@@ -29,7 +29,7 @@ ENV RUBY_DOWNLOAD_SHA256 91fcde77eea8e6206d775a48ac58450afe4883af1a42e5b358320be
 RUN set -ex \
 	\
 	&& savedAptMark="$(apt-mark showmanual)" \
-	&& apt-get update && apt-get install -y --no-install-recommends \
+	&& apt-get update && apt-get install -y --no-install-recommends libjemalloc-dev \
 		autoconf \
 		bison \
 		dpkg-dev \
@@ -67,7 +67,7 @@ RUN set -ex \
 	\
 	&& autoconf \
 	&& gnuArch="$(dpkg-architecture --query DEB_BUILD_GNU_TYPE)" \
-	&& ./configure \
+	&& ./configure --with-jemalloc \
 		--build="$gnuArch" \
 		--disable-install-doc \
 		--enable-shared \
