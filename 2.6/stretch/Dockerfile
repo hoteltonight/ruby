@@ -70,4 +70,7 @@ ENV PATH $GEM_HOME/bin:$BUNDLE_PATH/gems/bin:$PATH
 RUN mkdir -p "$GEM_HOME" && chmod 777 "$GEM_HOME"
 # (BUNDLE_PATH = GEM_HOME, no need to mkdir/chown both)
 
+RUN wget -q http://ht-infra-tools.s3.amazonaws.com/consul-bridge_0.0.6_linux64 -O /usr/bin/consul-bridge
+RUN chmod +x /usr/bin/consul-bridge
+
 CMD [ "irb" ]
