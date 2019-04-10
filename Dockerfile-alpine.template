@@ -1,5 +1,8 @@
 FROM alpine:%%PLACEHOLDER%%
 
+RUN apk add --no-cache \
+		gmp-dev
+
 # skip installing gem documentation
 RUN mkdir -p /usr/local/etc \
 	&& { \

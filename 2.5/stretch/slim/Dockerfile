@@ -6,6 +6,7 @@ RUN apt-get update \
 		ca-certificates \
 		libffi-dev \
 		libgdbm3 \
+		libgmp-dev \
 		libssl-dev \
 		libyaml-dev \
 		procps \
@@ -20,15 +21,16 @@ RUN mkdir -p /usr/local/etc \
 	} >> /usr/local/etc/gemrc
 
 ENV RUBY_MAJOR 2.5
-ENV RUBY_VERSION 2.5.3
-ENV RUBY_DOWNLOAD_SHA256 1cc9d0359a8ea35fc6111ec830d12e60168f3b9b305a3c2578357d360fcf306f
-ENV RUBYGEMS_VERSION 3.0.1
+ENV RUBY_VERSION 2.5.5
+ENV RUBY_DOWNLOAD_SHA256 9bf6370aaa82c284f193264cc7ca56f202171c32367deceb3599a4f354175d7d
+ENV RUBYGEMS_VERSION 3.0.3
 
 # some of ruby's build scripts are written in ruby
 #   we purge system ruby later to make sure our final image uses what we just built
 RUN set -ex \
 	\
-	&& buildDeps=' \
+	&& savedAptMark="$(apt-mark showmanual)" \
+	&& apt-get update && apt-get install -y --no-install-recommends \
 		autoconf \
 		bison \
 		dpkg-dev \
@@ -44,9 +46,6 @@ RUN set -ex \
 		ruby \
 		wget \
 		xz-utils \
-	' \
-	&& apt-get update \
-	&& apt-get install -y --no-install-recommends $buildDeps \
 	&& rm -rf /var/lib/apt/lists/* \
 	\
 	&& wget -O ruby.tar.xz "https://cache.ruby-lang.org/pub/ruby/${RUBY_MAJOR%-rc}/ruby-$RUBY_VERSION.tar.xz" \
@@ -76,10 +75,17 @@ RUN set -ex \
 	&& make -j "$(nproc)" \
 	&& make install \
 	\
-	&& dpkg-query --show --showformat '${package}\n' \
-		| grep -P '^libreadline\d+$' \
-		| xargs apt-mark manual \
-	&& apt-get purge -y --auto-remove $buildDeps \
+	&& apt-mark auto '.*' > /dev/null \
+	&& apt-mark manual $savedAptMark \
+	&& find /usr/local -type f -executable -not \( -name '*tkinter*' \) -exec ldd '{}' ';' \
+		| awk '/=>/ { print $(NF-1) }' \
+		| sort -u \
+		| xargs -r dpkg-query --search \
+		| cut -d: -f1 \
+		| sort -u \
+		| xargs -r apt-mark manual \
+	&& apt-get purge -y --auto-remove -o APT::AutoRemove::RecommendsImportant=false \
+	\
 	&& cd / \
 	&& rm -r /usr/src/ruby \
 # make sure bundled "rubygems" is older than RUBYGEMS_VERSION (https://github.com/docker-library/ruby/issues/246)

@@ -1,5 +1,8 @@
 FROM alpine:3.8
 
+RUN apk add --no-cache \
+		gmp-dev
+
 # skip installing gem documentation
 RUN mkdir -p /usr/local/etc \
 	&& { \
@@ -8,9 +11,9 @@ RUN mkdir -p /usr/local/etc \
 	} >> /usr/local/etc/gemrc
 
 ENV RUBY_MAJOR 2.4
-ENV RUBY_VERSION 2.4.5
-ENV RUBY_DOWNLOAD_SHA256 2f0cdcce9989f63ef7c2939bdb17b1ef244c4f384d85b8531d60e73d8cc31eeb
-ENV RUBYGEMS_VERSION 3.0.1
+ENV RUBY_VERSION 2.4.6
+ENV RUBY_DOWNLOAD_SHA256 25da31b9815bfa9bba9f9b793c055a40a35c43c6adfb1fdbd81a09099f9b529c
+ENV RUBYGEMS_VERSION 3.0.3
 
 # some of ruby's build scripts are written in ruby
 #   we purge system ruby later to make sure our final image uses what we just built
