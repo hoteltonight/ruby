@@ -82,7 +82,7 @@ RUN set -eux; \
 	gnuArch="$(dpkg-architecture --query DEB_BUILD_GNU_TYPE)"; \
 # the configure script does not detect isnan/isinf as macros
 	export ac_cv_func_isnan=yes ac_cv_func_isinf=yes; \
-	./configure \
+	./configure --with-jemalloc \
 		--build="$gnuArch" \
 		--disable-install-doc \
 		--enable-shared \
