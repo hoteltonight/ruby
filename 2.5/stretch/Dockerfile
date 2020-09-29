@@ -8,9 +8,10 @@ RUN set -eux; \
 		echo 'update: --no-document'; \
 	} >> /usr/local/etc/gemrc
 
+ENV LANG C.UTF-8
 ENV RUBY_MAJOR 2.5
-ENV RUBY_VERSION 2.5.7
-ENV RUBY_DOWNLOAD_SHA256 201870e8f58957d542233fef588b1d76f7bf962fea44dcbd2237f4a5899a3f95
+ENV RUBY_VERSION 2.5.8
+ENV RUBY_DOWNLOAD_SHA256 0391b2ffad3133e274469f9953ebfd0c9f7c186238968cbdeeb0651aa02a4d6d
 ENV RUBYGEMS_VERSION 3.0.3
 
 # some of ruby's build scripts are written in ruby
@@ -80,16 +81,12 @@ RUN set -eux; \
 	gem --version; \
 	bundle --version
 
-# install things globally, for great justice
-# and don't create ".bundle" in all our apps
+# don't create ".bundle" in all our apps
 ENV GEM_HOME /usr/local/bundle
-ENV BUNDLE_PATH="$GEM_HOME" \
-	BUNDLE_SILENCE_ROOT_WARNING=1 \
+ENV BUNDLE_SILENCE_ROOT_WARNING=1 \
 	BUNDLE_APP_CONFIG="$GEM_HOME"
-# path recommendation: https://github.com/bundler/bundler/pull/6469#issuecomment-383235438
-ENV PATH $GEM_HOME/bin:$BUNDLE_PATH/gems/bin:$PATH
+ENV PATH $GEM_HOME/bin:$PATH
 # adjust permissions of a few directories for running "gem install" as an arbitrary user
 RUN mkdir -p "$GEM_HOME" && chmod 777 "$GEM_HOME"
-# (BUNDLE_PATH = GEM_HOME, no need to mkdir/chown both)
 
 CMD [ "irb" ]

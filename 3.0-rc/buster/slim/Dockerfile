@@ -1,4 +1,4 @@
-FROM debian:stretch-slim
+FROM debian:buster-slim
 
 RUN set -eux; \
 	apt-get update; \
@@ -22,10 +22,10 @@ RUN set -eux; \
 		echo 'update: --no-document'; \
 	} >> /usr/local/etc/gemrc
 
-ENV RUBY_MAJOR 2.4
-ENV RUBY_VERSION 2.4.9
-ENV RUBY_DOWNLOAD_SHA256 0c4e000253ef7187feeb940a01a1c7594f28d63aa16f978e892a0e2864f58614
-ENV RUBYGEMS_VERSION 3.0.3
+ENV LANG C.UTF-8
+ENV RUBY_MAJOR 3.0-rc
+ENV RUBY_VERSION 3.0.0-preview1
+ENV RUBY_DOWNLOAD_SHA256 aa7cce0c99f4ea2145fef9b78d74a44857754396790cd23bad75d759811e7a2a
 
 # some of ruby's build scripts are written in ruby
 #   we purge system ruby later to make sure our final image uses what we just built
@@ -39,6 +39,7 @@ RUN set -eux; \
 		dpkg-dev \
 		gcc \
 		libbz2-dev \
+		libgdbm-compat-dev \
 		libgdbm-dev \
 		libglib2.0-dev \
 		libncurses-dev \
@@ -94,9 +95,6 @@ RUN set -eux; \
 	\
 	cd /; \
 	rm -r /usr/src/ruby; \
-# make sure bundled "rubygems" is older than RUBYGEMS_VERSION (https://github.com/docker-library/ruby/issues/246)
-	ruby -e 'exit(Gem::Version.create(ENV["RUBYGEMS_VERSION"]) > Gem::Version.create(Gem::VERSION))'; \
-	gem update --system "$RUBYGEMS_VERSION" && rm -r /root/.gem/; \
 # verify we have no "ruby" packages installed
 	! dpkg -l | grep -i ruby; \
 	[ "$(command -v ruby)" = '/usr/local/bin/ruby' ]; \
@@ -105,16 +103,12 @@ RUN set -eux; \
 	gem --version; \
 	bundle --version
 
-# install things globally, for great justice
-# and don't create ".bundle" in all our apps
+# don't create ".bundle" in all our apps
 ENV GEM_HOME /usr/local/bundle
-ENV BUNDLE_PATH="$GEM_HOME" \
-	BUNDLE_SILENCE_ROOT_WARNING=1 \
+ENV BUNDLE_SILENCE_ROOT_WARNING=1 \
 	BUNDLE_APP_CONFIG="$GEM_HOME"
-# path recommendation: https://github.com/bundler/bundler/pull/6469#issuecomment-383235438
-ENV PATH $GEM_HOME/bin:$BUNDLE_PATH/gems/bin:$PATH
+ENV PATH $GEM_HOME/bin:$PATH
 # adjust permissions of a few directories for running "gem install" as an arbitrary user
 RUN mkdir -p "$GEM_HOME" && chmod 777 "$GEM_HOME"
-# (BUNDLE_PATH = GEM_HOME, no need to mkdir/chown both)
 
 CMD [ "irb" ]

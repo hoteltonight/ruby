@@ -1,4 +1,4 @@
-FROM alpine:3.9
+FROM alpine:3.11
 
 RUN apk add --no-cache \
 		gmp-dev
@@ -11,9 +11,11 @@ RUN set -eux; \
 		echo 'update: --no-document'; \
 	} >> /usr/local/etc/gemrc
 
-ENV RUBY_MAJOR 2.6
-ENV RUBY_VERSION 2.6.5
-ENV RUBY_DOWNLOAD_SHA256 d5d6da717fd48524596f9b78ac5a2eeb9691753da5c06923a6c31190abe01a62
+ENV LANG C.UTF-8
+ENV RUBY_MAJOR 2.5
+ENV RUBY_VERSION 2.5.8
+ENV RUBY_DOWNLOAD_SHA256 0391b2ffad3133e274469f9953ebfd0c9f7c186238968cbdeeb0651aa02a4d6d
+ENV RUBYGEMS_VERSION 3.0.3
 
 # some of ruby's build scripts are written in ruby
 #   we purge system ruby later to make sure our final image uses what we just built
@@ -40,6 +42,7 @@ RUN set -eux; \
 		ncurses-dev \
 		openssl \
 		openssl-dev \
+		patch \
 		procps \
 		readline-dev \
 		ruby \
@@ -106,6 +109,9 @@ RUN set -eux; \
 	\
 	cd /; \
 	rm -r /usr/src/ruby; \
+# make sure bundled "rubygems" is older than RUBYGEMS_VERSION (https://github.com/docker-library/ruby/issues/246)
+	ruby -e 'exit(Gem::Version.create(ENV["RUBYGEMS_VERSION"]) > Gem::Version.create(Gem::VERSION))'; \
+	gem update --system "$RUBYGEMS_VERSION" && rm -r /root/.gem/; \
 # verify we have no "ruby" packages installed
 	! apk --no-network list --installed \
 		| grep -v '^[.]ruby-rundeps' \
@@ -117,16 +123,12 @@ RUN set -eux; \
 	gem --version; \
 	bundle --version
 
-# install things globally, for great justice
-# and don't create ".bundle" in all our apps
+# don't create ".bundle" in all our apps
 ENV GEM_HOME /usr/local/bundle
-ENV BUNDLE_PATH="$GEM_HOME" \
-	BUNDLE_SILENCE_ROOT_WARNING=1 \
+ENV BUNDLE_SILENCE_ROOT_WARNING=1 \
 	BUNDLE_APP_CONFIG="$GEM_HOME"
-# path recommendation: https://github.com/bundler/bundler/pull/6469#issuecomment-383235438
-ENV PATH $GEM_HOME/bin:$BUNDLE_PATH/gems/bin:$PATH
+ENV PATH $GEM_HOME/bin:$PATH
 # adjust permissions of a few directories for running "gem install" as an arbitrary user
 RUN mkdir -p "$GEM_HOME" && chmod 777 "$GEM_HOME"
-# (BUNDLE_PATH = GEM_HOME, no need to mkdir/chown both)
 
 CMD [ "irb" ]
