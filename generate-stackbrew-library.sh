@@ -2,15 +2,15 @@
 set -Eeuo pipefail
 
 declare -A aliases=(
-	[2.6]='2 latest'
-	[2.7-rc]='rc'
+	[3.0]='3 latest'
+	[2.7]='2'
 )
 
 defaultDebianSuite='buster'
 declare -A debianSuites=(
-	#[2.7-rc]='buster'
+	#[2.7]='buster'
 )
-defaultAlpineVersion='3.10'
+defaultAlpineVersion='3.12'
 declare -A alpineVersion=(
 	#[2.3]='3.8'
 )
@@ -80,7 +80,7 @@ join() {
 for version in "${versions[@]}"; do
 	for v in \
 		{buster,stretch}{,/slim} \
-		alpine{3.10,3.9} \
+		alpine{3.12,3.11} \
 	; do
 		dir="$version/$v"
 		variant="$(basename "$v")"
