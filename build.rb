@@ -1,21 +1,18 @@
 # frozen_string_literal: true
 
-VERSIONS_TO_BUILD = %w[2.3 2.4 2.5 2.6]
+VERSIONS_TO_BUILD = %w[2.5 2.6 2.7]
 TAG_TO_FIND = /ENV\s+RUBY_VERSION\s+(.+)/
 NAME = "hoteltonight/ruby-jemalloc"
 
 require 'open3'
 
 def run_command(cmd)
-  Open3.popen3(cmd) do |stdout, stderr, status, thread|
+  Open3.popen2e(cmd) do |stdin, stdout_stderr, wait_thread|
     Thread.new do
-      while line = stdout.gets do
-        puts(line)
-      end
+      stdout_stderr.each {|l| puts l }
     end
-    while line = stderr.gets do
-      puts(line)
-    end
+
+    wait_thread.value
   end
 end
 
